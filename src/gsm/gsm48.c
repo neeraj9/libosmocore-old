@@ -391,22 +391,25 @@ void gsm48_parse_ra(struct gprs_ra_id *raid, const uint8_t *buf)
 	raid->rac = buf[5];
 }
 
+/* See 3GPP TS 04.08, sec 10.5.5.15 (Routing area identification)
+ */
 int gsm48_construct_ra(uint8_t *buf, const struct gprs_ra_id *raid)
 {
 	uint16_t mcc = raid->mcc;
 	uint16_t mnc = raid->mnc;
+	uint8_t bcd[3];
 
-	buf[0] = ((mcc / 100) % 10) | (((mcc / 10) % 10) << 4);
-	buf[1] = (mcc % 10);
+	to_bcd(bcd, mcc);
+	buf[0] = bcd[0] | (bcd[1] << 4);
+	buf[1] = bcd[2];
 
-	/* I wonder who came up with the stupidity of encoding the MNC
-	 * differently depending on how many digits its decimal number has! */
+	to_bcd(bcd, mnc);
 	if (mnc < 100) {
 		buf[1] |= 0xf0;
-		buf[2] = ((mnc / 10) % 10) | ((mnc % 10) << 4);
+		buf[2] = bcd[1] | (bcd[2] << 4);
 	} else {
-		buf[1] |= (mnc % 10) << 4;
-		buf[2] = ((mnc / 100) % 10) | (((mcc / 10) % 10) << 4);
+		buf[1] |= bcd[2] << 4;
+		buf[2] = bcd[0] | (bcd[1] << 4);
 	}
 
 	*(uint16_t *)(buf+3) = htons(raid->lac);
